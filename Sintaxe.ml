@@ -21,10 +21,10 @@ type expr = Ncte of int
 		  | If of expr *  expr *  expr
 		  | Var of variable
 		  | App of expr * expr
-		  | ??Lam
+		  | Lam of variable * expr
 		  | Let of variable * expr * expr
 		  | Lrec of variale * variable * expr * expr
-		  | ??? 
+		 (* | Fix of exp *)
 		  | Nil
 		  | Cons of expr * expr
 		  | Hd of expr
