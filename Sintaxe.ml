@@ -5,7 +5,7 @@ type bop = Sub
 		 | And
 		 | Mult 
 		 | Div 
-		 | Eq 
+		 | Eq (*VER COM O SOR: equal eh só p nros ou pra true e false tbm??*)
 		 | Neq (* Not equal*)
 		 | Leq  (* less or equal*)
 		 | Less  

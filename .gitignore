@@ -8,6 +8,7 @@
 *.cmi
 *.a
 *.o
+*.exe
 *.cmx
 *.cmxs
 *.cmxa

@@ -43,7 +43,7 @@ let rec eval (env : env) (exp : expr) : result = match exp with
 			 | Mult, 	Vnum(v1), Vnum(v2) -> Vnum(v1 * v2)
 			 | Div, 	Vnum(v1), Vnum(v2) -> if v2 != 0 then Vnum(v1 / v2) else Rraise
 			 | Eq, 		Vnum(v1), Vnum(v2) -> Vbool(v1 == v2)
-			 | Neq,		Vnum(v1), Vnum(v2) -> Vbool(v1 !=v2)
+			 | Neq,		Vnum(v1), Vnum(v2) -> Vbool(v1 != v2)
 			 | Less, 	Vnum(v1), Vnum(v2) -> Vbool(v1 < v2)
 			 | Leq, 	Vnum(v1), Vnum(v2) -> Vbool(v1 <= v2)
 			 | Greater, Vnum(v1), Vnum(v2) -> Vbool(v1 > v2)
