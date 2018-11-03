@@ -5,8 +5,8 @@ type result = Vnum of int
 			| Vpair of result * result
 			| Vnil
 			| Vcons of result * result
-			| Vclos of variable * exp * env
-			| Vrclos of variable * variable * exp * env
+			| Vclos of variable * expr * env
+			| Vrclos of variable * variable * expr * env
 			| Rraise
 and 
 	env = (variable * result) list 
@@ -47,7 +47,7 @@ let rec eval (env : env) (exp : expr) : result = match exp with
 			 | Less, 	Vnum(v1), Vnum(v2) -> Vbool(v1 < v2)
 			 | Leq, 	Vnum(v1), Vnum(v2) -> Vbool(v1 <= v2)
 			 | Greater, Vnum(v1), Vnum(v2) -> Vbool(v1 > v2)
-			 | Greq, 	Vnum(v1), Vnum(v2) -> Vbool(v1 >= v2)
+			 | Geq, 	Vnum(v1), Vnum(v2) -> Vbool(v1 >= v2)
 			 | And, 	Vbool(v1), Vbool(v2) -> Vbool(v1 && v2)
 			 | Or, 		Vbool(v1), Vbool(v2) -> Vbool(v1 || v2)
 			 (*Se o pattern matching não aplica nenhuma regra*)
@@ -57,7 +57,7 @@ let rec eval (env : env) (exp : expr) : result = match exp with
 	(* BS-UNOP *)
 	| Unop(exp, e1) ->
 		(match (eval env e1) with
-			RRaise -> Rraise
+			Rraise -> Rraise
 		| 	Vbool(b) -> Vbool(not b)
 		| _ -> raise NoRuleApplies)
 	
@@ -83,36 +83,36 @@ let rec eval (env : env) (exp : expr) : result = match exp with
 		if v2 = Rraise then Rraise else
 		(* Nenhum dos operador avalia para raise*)
 		( match(v1, v2) with
-        | (Vclos(x, e, env'), v) -> _eval ((x,v)::env') e
-        | (Vrclos(f, x, e, env'), v) -> _eval ((x,v)::(f,Vrclos(f,x,e,env'))::env') e
-		| _ -> raise NoRuleApplies)
+        | (Vclos(x, e, env'), v) -> eval ((x,v)::env') e
+        | (Vrclos(f, x, e, env'), v) -> eval ((x,v)::(f,Vrclos(f,x,e,env'))::env') e
+		| _ -> raise NoRuleApplies
 		)
 
     (* BS-FN *)
-    | Lam(x, t, e) -> Vclos(x, e, env)
+    | Lam(x, e1) -> Vclos(x, e1, env)
 
  	(* BS-LET *)
 	| Let(x, e1, e2) ->
 		(let v1 = eval env e1 in
-			let v1 = Rraise then Rraise
+			if v1 = Rraise then Rraise
 			else eval((x, v1) :: env) e2)
 
 	(* BS-LETREC *)
 	| Lrec(f, x, e1, e2) -> 
 		(let env' = (f, Vrclos(f, x, e1, env)) :: env in 
-			eval env1 e2)
+			eval env' e2)
 
 	(* BS-NIL *)
-	| Nil -> Nil
+	| Nil -> Vnil
 
 	(* BS-CONS *)
 	| Cons(e1, e2) ->
-		(let v1 = eval env e1
+		(let v1 = eval env e1 in
 			if v1 = Rraise then Rraise
 		else let v2 = eval env e2 in
 			(match v2 with 
-				| Rraise -> RRaise
-				| (Vnil | Vcons( _ , _ )) -> VCons(v1,v2)
+				| Rraise -> Rraise
+				| (Vnil | Vcons( _ , _ )) -> Vcons(v1,v2)
 				| _ -> raise NoRuleApplies))
 
 	(* BS-ISEMPTY *)
@@ -120,7 +120,7 @@ let rec eval (env : env) (exp : expr) : result = match exp with
 		(match (eval env e1) with
 			| Rraise -> Rraise
 			| Vnil -> Vbool(true)
-			| Vcons( _ , _ ) -> Vbool(false)
+			| Vcons(_,_) -> Vbool(false)
 			| _ -> raise NoRuleApplies
 		)
 	(* BS-HEAD *)
@@ -135,7 +135,7 @@ let rec eval (env : env) (exp : expr) : result = match exp with
 	| Tl(e1) ->
 		(match (eval env e1) with
 			| Rraise -> Rraise
-			| VNil -> Rraise
+			| Vnil -> Rraise
 			| Vcons(_, v) -> v 
 			(*Essa exececao n é pra rolar se o typeinfer tiver top, mas vou colocar porque vai que*)
 			| _ -> raise NoRuleApplies
@@ -143,7 +143,7 @@ let rec eval (env : env) (exp : expr) : result = match exp with
 	(* BS-TRYWITH *)
 	| Try(e1, e2) ->
 		let v1 = eval env e1 in
-		if v1 = Raise then eval env e2
+		if v1 = Rraise then eval env e2
 		else v1
 	(* BS-RAISE*)
-	| Raise -> Raise 
+	| Raise -> Rraise 

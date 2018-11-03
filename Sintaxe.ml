@@ -1,3 +1,5 @@
+type variable = string
+
 type bop = Sub
 		 | Add
 		 | And
@@ -11,22 +13,23 @@ type bop = Sub
 		 | Greater  
 		 | Or 
 
-type unop = Not
+type uop = Not
 
 type expr = Ncte of int
 		  | Bcte of bool
 		  | Binop of bop * expr * expr
-		  | Unop of nop * expr
+		  | Unop of uop * expr
 		  | Pair of expr * expr 
 		  | If of expr *  expr *  expr
 		  | Var of variable
 		  | App of expr * expr
 		  | Lam of variable * expr
 		  | Let of variable * expr * expr
-		  | Lrec of variale * variable * expr * expr
+		  | Lrec of variable * variable * expr * expr
 		 (* | Fix of exp *)
 		  | Nil
 		  | Cons of expr * expr
+		  | IsEmpty of expr
 		  | Hd of expr
 		  | Tl of expr
 		  | Raise
