@@ -1,5 +1,5 @@
-type variable = string
-
+type variable = string 
+ 
 type bop = Sub
 		 | Add
 		 | And

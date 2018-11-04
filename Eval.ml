@@ -37,7 +37,7 @@ let rec eval (env : env) (exp : expr) : result = match exp with
 				let v2 = eval env e2 in
 			if v2 = Rraise then Rraise else
 			(*Nenhum eh Raise*)
-			(match op, v1, v2 with
+			(match op, v1, v2 with  
 			 | Sub, 	Vnum(v1), Vnum(v2) -> Vnum(v1 - v2)
 			 | Add,		Vnum(v1), Vnum(v2) -> Vnum(v1 + v2)
 			 | Mult, 	Vnum(v1), Vnum(v2) -> Vnum(v1 * v2)
