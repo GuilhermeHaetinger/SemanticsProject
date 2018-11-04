@@ -26,7 +26,6 @@ type expr = Ncte of int
 		  | Lam of variable * expr
 		  | Let of variable * expr * expr
 		  | Lrec of variable * variable * expr * expr
-		 (* | Fix of exp *)
 		  | Nil
 		  | Cons of expr * expr
 		  | IsEmpty of expr

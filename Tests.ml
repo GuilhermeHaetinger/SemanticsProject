@@ -69,19 +69,18 @@ let test_head_raise = Hd(Cons(Binop(Add, Ncte(7), Ncte(0)), Cons(Raise, (Cons (N
 let test_head_raise_2 = Hd(Cons(Raise, Cons(Raise, (Cons (Ncte(5), Nil)))))
 let test_tail = Tl(Cons(Binop(Add, Ncte(7), Ncte(0)), Cons(Bcte(true), (Cons (Ncte(5), Nil)))))
 let test_tail_raise = Tl(Cons(Raise, Cons(Bcte(true), (Cons (Ncte(5), Nil)))))
+let test_try = Try(Bcte(true), Binop(Add,Ncte(50),Ncte(11)))
+let test_try_raise = Try(test_cons_raise, Binop(Add,Ncte(50),Ncte(11)))
+let test_lam = Lam("une_variable", If(Binop(Eq, Var("une_variable"), Ncte(5)), Ncte(5), Ncte(5)))
+let diff_if_type = If(test_greater_false,Bcte(true),Ncte(8)) (*NÃO DA ERRO, VER COM O SOR*)
 
-(*let test_try = Try(Bool(true), Bop(Sum,Num(5),Num(10)))*)
-
-
-let test_lam = 0
-
+let test_try_error = Try(Bcte(true), Binop(Add,Ncte(5),Ncte(10)))
 let test_is_empty_error =  IsEmpty(Ncte(8))
 let test_cons_erro = Cons(Ncte(7), (Cons(Ncte(7), Ncte(7))))
 let rfat_erro = 
 	Lrec("fat", "x", If(Binop(Eq, Var "x", Ncte 0), Ncte 1,
 						Binop(Mult, Var "x", App(Var "fat", Binop(Sub, Var "x", Ncte 1)))),
 		App(Var "fat", Bcte true)) 
-let wrong_if_type = If(test_greater_false,Bcte(true),Ncte(8)) (*NÃO DA ERRO, VER COM O SOR*)
 let test_and_type_error = (Binop(And,  Ncte(0),  Bcte(false)))
 let test_not_error = Unop(Not, Ncte(0))
 let sist_tipos_error = (Binop(Sub, Ncte(-7), Bcte(true))) (*VER COM O SOR: dá prob c o sistema de tipos(NO rules applies), n raise, é isso??*)
@@ -97,7 +96,9 @@ let rec string_of_result(r : result) : string =  match r with
 	| Rraise -> "raise"
 
 let () = 
-	try 
+
+	try
+	
 		print_endline ("Resultado teste soma: " ^ (string_of_result (eval [] add_test)));
 		print_endline ("Resultado teste subtract: " ^ (string_of_result (eval [] subtract_test)));
 		print_endline ("Resultado teste erro subtração: " ^ (string_of_result (eval [] subtract_test_error)));
@@ -139,5 +140,18 @@ let () =
 		print_endline ("Resultado teste head raise2: " ^ (string_of_result (eval [] test_head_raise_2)));
 		print_endline ("Resultado teste tail: " ^ (string_of_result (eval [] test_tail)));
 		print_endline ("Resultado teste tail raise: " ^ (string_of_result (eval [] test_tail_raise)));
+		print_endline ("Resultado teste try: " ^ (string_of_result (eval [] test_try)));
+		print_endline ("Resultado teste try raise: " ^ (string_of_result (eval [] test_try_raise)));
+		print_endline ("Resultado teste lam: " ^ (string_of_result (eval [] test_lam)));
+		print_endline ("Resultado teste diff_if_type: " ^ (string_of_result (eval [] diff_if_type)));
+
 	with
-		NoRuleApplies -> print_endline "Problema com o sistema de tipos"
+		NoRuleApplies -> print_endline ("Erro no sistema de tipos")
+
+(* Funções as quais dão erro NoRuleApplies 		
+		print_endline ("Resultado teste test_try_error: " ^ (string_of_result (eval [] test_try_error)));
+		print_endline ("Resultado teste test_cons_erro: " ^ (string_of_result (eval [] test_cons_erro)));
+		print_endline ("Resultado teste rfat_erro: " ^ (string_of_result (eval [] rfat_erro)));
+		print_endline ("Resultado teste test_and_type_error: " ^ (string_of_result (eval [] test_and_type_error)));
+		print_endline ("Resultado teste test_not_error: " ^ (string_of_result (eval [] test_not_error)));
+		print_endline ("Resultado teste sist_tipos_error: " ^ (string_of_result (eval [] sist_tipos_error))); *)
