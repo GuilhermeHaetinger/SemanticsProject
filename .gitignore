@@ -13,6 +13,9 @@
 *.cmxs
 *.cmxa
 
+# Catas program
+prog
+
 # ocamlbuild working directory
 _build/
 
