@@ -1,7 +1,6 @@
-# Semantics Project 
-## INF05516 - **UFRGS** 2018/2
+# Semantics Project - **UFRGS** 2018/2
 
-## Students: 
+### Students: 
 * ### Catarina Nogueira **00245534** 
 * ### Guilherme Haetinger **00274702**
 
