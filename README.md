@@ -1,10 +1,24 @@
-# Semantics Project
+# Semantics Project 
+## INF05516 - **UFRGS** 2018/2
 
-### Alunos: Catarina Nogueira (00245534) e Guilherme Haetinger
+## Students: 
+* ### Catarina Nogueira **00245534** 
+* ### Guilherme Haetinger **00274702**
 
-* Para Rodar os testes:
-``` 
- PARA RODAR : ocamlopt -o prog Sintaxe.ml Eval.ml Tests.ml e dps * / prog *
+A simple type infering code for L1 language.
+### Project Specification:
+### [L1 TypeInfer and Eval](https://github.com/GuilhermeHaetinger/SemanticsProject/blob/master/trab-18-2.pdf)
+
+Generic testing for *eval*
+```
+> ocamlopt -o evalTests.exe Sintaxe.ml Eval.ml Tests.ml
+> ./evalTests.exe
+```
+
+Generic testing for *eval*
+```
+> ocamlopt -o typeInferTests.exe TypeInfer.ml
+> ./typeInferTests.exe
 ``` 
 
 * Importante
