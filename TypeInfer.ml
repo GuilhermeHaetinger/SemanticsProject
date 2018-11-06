@@ -299,29 +299,29 @@ let rec run_typeInferTests (exps: expr list) = match exps with
 let () = 
 
     (* NORMAL *)
-    let t1 = Num(1) in
-    let t2 = Bool(true) in
-    let t3 = Binop(Sum, Num(1), Num(2)) in
-    let t4 = Pair(Num(1), Bool(false)) in
-    let t5 = If(Bool(true), Binop(Sum, Num(6), Num(7)), Binop(Mult, Num(7), Num(8))) in
-    let t6 = App(Fn(String("var"), (Binop(Div, Num(1), Binop(Sum, Num(2), Num(1))))), Num(6)) in
-    let t7 = Let(String("myVar"), Num(5), Binop(Sum, Var("myVar"), Num(5))) in
+    let t1 = Num(1) in                                                                              (* int *)
+    let t2 = Bool(true) in                                                                          (* bool *)
+    let t3 = Binop(Sum, Num(1), Num(2)) in                                                          (* int *)
+    let t4 = Pair(Num(1), Bool(false)) in                                                           (* int X bool *)
+    let t5 = If(Bool(true), Binop(Sum, Num(6), Num(7)), Binop(Mult, Num(7), Num(8))) in             (* int *)
+    let t6 = App(Fn(String("var"), (Binop(Div, Num(1), Binop(Sum, Num(2), Num(1))))), Num(6)) in    (* int *)
+    let t7 = Let(String("myVar"), Num(5), Binop(Sum, Var("myVar"), Num(5))) in                      (* int *)
     let t8 = Lrec(String("fat"), String("x"),
                 If(Binop(Eq, Var("x"), Num(0)),
                 Num(1),
                 Binop(Mult, Var("x"), App(Var("fat"), Binop(Diff, Var("x"), Num(1))))),
-                App(Var("fat"), Num(5))) in
-    let t9 = IsEmpty(Nil) in
-    let t10 = Cons(Num(5), (Cons (Num(5), Nil))) in
-    let t11 = Hd(Cons(Bool(true), (Cons(Bool(false), Nil)))) in
-    let t12 = TryWith(Bool(true), Binop(Eq,Num(5),Num(10))) in
+                App(Var("fat"), Num(5))) in                                                         (* int *)
+    let t9 = IsEmpty(Nil) in                                                                        (* bool *)
+    let t10 = Cons(Num(5), (Cons (Num(5), Nil))) in                                                 (* int list *)
+    let t11 = Hd(Cons(Bool(true), (Cons(Bool(false), Nil)))) in                                     (* bool *)
+    let t12 = TryWith(Bool(true), Binop(Eq,Num(5),Num(10))) in                                      (* bool *)
 
     (* WITH UNDEFINED TYPE *)
-    let t13 = Fn(String("var"), (Binop(Div, Num(9), Binop(Sum, Num(2), Num(1))))) in
-    let t14 = Nil in
+    let t13 = Fn(String("var"), (Binop(Div, Num(9), Binop(Sum, Num(2), Num(1))))) in                (* X -> int *)
+    let t14 = Nil in                                                                                (* X list *)
     (* UNRESOLVABLE *)
-    let t15 = Unop(Not, Binop(Sum, Num(1), Num(6))) in
-    let t16 = Tl(Cons(Num(5), (Cons(Bool(true), Nil)))) in
+    let t15 = Unop(Not, Binop(Sum, Num(1), Num(6))) in                                              (* UNRESOLVABLE *)
+    let t16 = Tl(Cons(Num(5), (Cons(Bool(true), Nil)))) in                                          (* UNRESOLVABLE *)
 
     let tests = [t1;t2;t3;t4;t5;t6;t7;t8;t9;t10;t11;t12;t13;t14;t15;t16] in
 
