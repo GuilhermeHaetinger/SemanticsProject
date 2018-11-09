@@ -8,17 +8,11 @@ A simple type infering code for L1 language.
 ### Project Specification:
 ### [L1 TypeInfer and Eval](https://github.com/GuilhermeHaetinger/SemanticsProject/blob/master/trab-18-2.pdf)
 
-Generic testing for *eval*
+Generic testing
 ```
-> ocamlopt -o evalTests.exe Sintaxe.ml Eval.ml Tests.ml
+> ocamlopt -o tests.exe Sintaxe.ml TypeInfer.ml Eval.ml Tests.ml
 > ./evalTests.exe
 ```
-
-Generic testing for *eval*
-```
-> ocamlopt -o typeInferTests.exe TypeInfer.ml
-> ./typeInferTests.exe
-``` 
 
 * Importante
 
