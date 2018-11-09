@@ -1,3 +1,4 @@
+open TypeInfer
 open Sintaxe
 open Eval
 
@@ -155,3 +156,113 @@ let () =
 		print_endline ("Resultado teste test_and_type_error: " ^ (string_of_result (eval [] test_and_type_error)));
 		print_endline ("Resultado teste test_not_error: " ^ (string_of_result (eval [] test_not_error)));
 		print_endline ("Resultado teste sist_tipos_error: " ^ (string_of_result (eval [] sist_tipos_error))); *)
+
+
+(********************************** TEST INFER TESTS *************************)
+
+
+let rec run_constraintTests (exps: expr list) = match exps with
+  | [] ->
+    print_endline ("=====END OF TESTS=====");
+  | hd::tl ->
+    let (finalTp, _, constr) = collect hd in
+      print_endline ("expression type = " ^ tipoToString finalTp);
+      printConstraints constr;
+      try run_constraintTests tl;
+	  with
+	    UndeclaredVar(name) -> (
+			print_endline ("UNDECLARED VARIABLE: ~" ^ name ^ "~");
+		);
+;;
+
+let rec run_typeInferTests (exps: expr list) = (
+  match exps with
+  | [] ->
+    print_endline ("=====END OF TESTS=====");
+  | hd::tl -> (
+    try (
+		print_endline (tipoToString (typeInfer hd));
+	)
+	with e -> match e with
+      | Unresolvable -> (
+        print_endline ("UNRESOLVABLE");
+      );
+      | UndeclaredVar(name) -> (
+        print_endline ("UNDECLARED VARIABLE: ~" ^ name ^ "~");
+      );
+      | _ -> ();
+  );
+
+  print_endline ("===============");
+  run_typeInferTests tl;
+)
+;;
+
+let () = 
+
+  (* NORMAL TESTS*)
+
+  (* int *)
+  let t1 = Ncte(1) in
+  (* bool *)
+  let t2 = Bcte(true) in
+  (* int *)
+  let t3 = Binop(Add, Ncte(1), Ncte(2)) in
+  (* int * bool *)
+  let t4 = Pair(Ncte(1), Bcte(false)) in
+  (* int *)
+  let t5 = If(Bcte(true),
+    Binop(Add, Ncte(6), Ncte(7)),
+	Binop(Mult, Ncte(7), Ncte(8))
+  ) in       
+  
+  (* int *)
+  let t6 = App(
+    Lam("var",(
+      Binop(Div, Ncte(1),
+	    Binop(Add, Ncte(2), Ncte(1))
+      )
+	)), Ncte(6)) in
+
+  (* int *)
+  let t7 = Let("myVar", Ncte(5), Binop(Add, Var("myVar"), Ncte(5))) in
+  (* int *)
+  let t8 = Lrec("fat", "x",
+    If(Binop(Eq, Var("x"), Ncte(0)),
+    Ncte(1),
+    Binop(Mult, Var("x"), App(Var("fat"), Binop(Sub, Var("x"), Ncte(1))))),
+    App(Var("fat"), Ncte(5))) in
+
+  (* bool *)
+  let t9 = IsEmpty(Nil) in
+  (* int list *)
+  let t10 = Cons(Ncte(5), (Cons (Ncte(5), Nil))) in
+  (* bool *)
+  let t11 = Hd(Cons(Bcte(true), (Cons(Bcte(false), Nil)))) in
+  (* bool *)
+  let t12 = Try(Bcte(true), Binop(Eq,Ncte(5),Ncte(10))) in
+  
+  (* WITH UNDEFINED TYPE *)
+  
+  (* X -> int *)
+  let t13 = Lam("var", (Binop(Div, Ncte(9), Binop(Add, Ncte(2), Ncte(1))))) in
+  (* X list *)
+  let t14 = Nil in
+  
+  (* UNRESOLVABLE *)
+  
+  (* UNRESOLVABLE *)
+  let t15 = Unop(Not, Binop(Add, Ncte(1), Ncte(6))) in
+  (* UNRESOLVABLE *)
+  let t16 = Tl(Cons(Ncte(5), (Cons(Bcte(true), Nil)))) in
+  (* UNRESOLVABLE *)
+  let t17 = Let("myVar",
+    Ncte(5), Let("myVar", Bcte(true),
+	Binop(Add, Var("myVar"), Ncte(5))
+  )) in
+
+  let tests = [t1;t2;t3;t4;t5;t6;t7;t8;t9;t10;t11;t12;t13;t14;t15;t16;t17] in
+
+(*TYPE INFER TESTS *)
+  run_typeInferTests tests
+  (* run_constraintTests tests *)

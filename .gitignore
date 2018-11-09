@@ -13,8 +13,7 @@
 *.cmxs
 *.cmxa
 
-# Catas program
-prog
+*.exe
 
 # ocamlbuild working directory
 _build/

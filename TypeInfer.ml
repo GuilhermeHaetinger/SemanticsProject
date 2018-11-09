@@ -1,197 +1,149 @@
-(************************************************************* Types *****************************************************************)
-type tipo  = TyInt
-            | TyBool
-            | TyPair of tipo * tipo
-            | TyFn of tipo * tipo
-            | TyList of tipo
-            | NewType of int
+open Sintaxe
 
-type variable = String of string 
-                | Type of tipo
+(********************************************************* COLLECT ***********)
 
-type bop = Sum
-            | Diff
-            | Mult
-            | Div
-            | Eq
-            | Neq
-            | Leq
-            | Less
-            | Geq
-            | Greater 
-            | Or
-            | And
+exception UndeclaredVar of string
 
-type uop = Not
+let rec collect_ (envi:env) (count:int) (exp:expr): tipo*int*constrs = 
+  match exp with
+  | Ncte(t) ->
+    (TyInt, count, [])
 
-type expr = Num of int
-          | Bool of bool
-          | Var of string
-          | Binop of bop * expr * expr
-          | Unop of uop * expr
-          | If of expr * expr * expr
-          | Pair of expr * expr
-          | App of expr * expr
-          | Fn of variable * expr
-          | Let of variable * expr * expr
-          | Lrec of variable * variable * expr * expr
-          | Nil
-          | Cons of expr * expr
-          | IsEmpty of expr
-          | Hd of expr
-          | Tl of expr
-          | Raise
-          | TryWith of expr * expr
-          
-type value = Vnum of int
-           | Vbool of bool
-           | Vclos of variable * expr * env
-           | Vrclos of variable * variable * expr * env
-           | Vnil
-           | Vcons of value * value
-           | VRaise
-and
-     env = (variable * tipo) list
+  | Bcte(t) ->
+    (TyBool, count, [])
 
+  | Var(name) -> (
+    try (let term =
+      (snd (List.find (fun (var, _) -> String.compare var name == 0)
+        (List.rev envi))) in term, count, [])
+    with _ -> 
+      raise (UndeclaredVar(name))
+    )
 
-(********************************************************* COLLECT *******************************************************************)
+  | Binop(op, t1, t2) ->
+    let (ty1, cnt1, cnstr1) = collect_ envi count t1 in
+    let (ty2, cnt2, cnstr2) = collect_ envi cnt1 t2 in
+      (match op with
+        | Eq | Neq | Leq | Less | Geq |Greater ->
+          (TyBool,cnt2,List.concat [cnstr1;cnstr2;[(ty1,TyInt)];[(ty2,TyInt)]])
+        | Add | Sub | Mult | Div ->
+          (TyInt,cnt2,List.concat [cnstr1;cnstr2;[(ty1,TyInt)];[(ty2,TyInt)]])
+        | Or | And ->
+        (TyBool,cnt2,List.concat [cnstr1;cnstr2;[(ty1,TyBool)];[(ty2,TyBool)]])
+      )
 
-exception UndeclaredVar
+  | Unop(op, t) ->
+    let (ty, cnt, cnstr) = collect_ envi count t in
+      (TyBool, cnt, List.concat [cnstr; [(ty, TyBool)]])
 
-let rec collect_constr (environment:env) (exprCounter:int) (expression:expr) = match expression with
-    | Num(t) ->
-        (TyInt, exprCounter, [])
+  | Pair(t1, t2) -> 
+    let (ty1, cnt1, cnstr1) = collect_ envi count t1 in
+    let (ty2, cnt2, cnstr2) = collect_ envi cnt1 t2 in
+      (TyPair(ty1, ty2), cnt2, List.concat [cnstr1; cnstr2])
 
-    | Bool(t) ->
-        (TyBool, exprCounter, [])
-
-    | Var(name) -> (
-        try (let term = (snd (List.find (fun (String(var), _) -> String.compare var name == 0) (List.rev environment))) in term, exprCounter, [])
-        with _ -> 
-        print_endline ("\n\nvariable " ^ name ^ " not found!\n\n");
-        raise UndeclaredVar
-        )
-
-    | Binop(op, t1, t2) ->
-        let (typeT1, countT1, constrT1) = collect_constr environment exprCounter t1 in
-            let (typeT2, countT2, constrT2) = collect_constr environment countT1 t2 in
-                (match op with
-                    | Eq | Neq | Leq | Less | Geq |Greater ->
-                        (TyBool, countT2, List.concat [constrT1; constrT2; [(Type(typeT1), TyInt)]; [(Type(typeT2), TyInt)]])
-                    | Sum | Diff | Mult | Div ->
-                        (TyInt, countT2, List.concat [constrT1; constrT2; [(Type(typeT1), TyInt)]; [(Type(typeT2), TyInt)]])
-                    | Or | And ->
-                        (TyBool, countT2, List.concat [constrT1; constrT2; [(Type(typeT1), TyBool)]; [(Type(typeT2), TyBool)]])
-                )
-
-    | Unop(op, t) ->
-        let (typeT, countT, constrT) = collect_constr environment exprCounter t in
-            (TyBool, countT, List.concat [constrT; [(Type(typeT), TyBool)]])
-
-    | Pair(t1, t2) -> 
-        let (typeT1, countT1, constrT1) = collect_constr environment exprCounter t1 in
-            let (typeT2, countT2, constrT2) = collect_constr environment countT1 t2 in
-                (TyPair(typeT1, typeT2), countT2, List.concat [constrT1; constrT2])
-
-    | If(t1, t2, t3) ->
-        let (typeT1, countT1, constrT1) = collect_constr environment exprCounter t1 in
-            let (typeT2, countT2, constrT2) = collect_constr environment countT1 t2 in
-                let (typeT3, countT3, constrT3) = collect_constr environment countT2 t3 in
-                    (typeT2, countT3, List.concat [constrT1; constrT2; constrT3; [(Type(typeT1), TyBool)]; [(Type(typeT2), typeT3)]])
-    (* Não sei se t2 = t3 AND t3 = t2 é necessario aqui em cima *)
-    | App(t1, t2) ->
-        let (typeT1, countT1, constrT1) = collect_constr environment exprCounter t1 in
-            let (typeT2, countT2, constrT2) = collect_constr environment countT1 t2 in
-                let newType = NewType(countT2) in
-                    (newType, countT2+1, List.concat [constrT1; constrT2; [(Type(typeT1), TyFn(typeT2, newType))]])
-
-    | Fn(var, exp) ->
-        let newType = NewType(exprCounter) in
-            let newVar = (var, newType) in
-                let (typeT, countT, constrT) = collect_constr (List.concat [environment; [newVar]]) (exprCounter+1) exp in
-                    (TyFn(newType, typeT), countT, constrT)
-
-    | Let(var, exp1, exp2) ->
-        let newType = NewType(exprCounter) in
-            let newVar = (var, newType) in
-                let (typeT1, countT1, constrT1) = collect_constr environment (exprCounter+1) exp1 in
-                    let (typeT2, countT2, constrT2) = collect_constr (List.concat [environment; [newVar]]) countT1 exp2 in
-                        (typeT2, countT2, List.concat [constrT1; constrT2; [(Type(newType), typeT1)]])
-
-    | Lrec(var1, var2, exp1, exp2) ->
-        let newType1 = NewType(exprCounter) in
-            let f = (var1, newType1) in
-                let newType2 = NewType(exprCounter+1) in
-                    let y = (var2, newType2) in
-                        let (typeT1, countT1, constrT1) = collect_constr (List.concat [environment; [y]; [f]]) (exprCounter+2) exp1 in
-                            let (typeT2, countT2, constrT2) = collect_constr (List.concat [environment; [f]]) countT1 exp2 in
-                                (typeT2, countT2, List.concat [constrT1; constrT2; [(Type(newType1), TyFn(newType2, typeT1))]])
+  | If(t1, t2, t3) ->
+    let (ty1, cnt1, cnstr1) = collect_ envi count t1 in
+    let (ty2, cnt2, cnstr2) = collect_ envi cnt1 t2 in
+    let (ty3, cnt3, cnstr3) = collect_ envi cnt2 t3 in
+      (ty2,cnt3,List.concat [cnstr1;cnstr2;cnstr3;[(ty1,TyBool)];[(ty2,ty3)]])
     
-    | Nil ->
-        let newType = NewType(exprCounter) in
-            (TyList(newType), exprCounter+1, [])
+  | App(t1, t2) ->
+    let (ty1, cnt1, cnstr1) = collect_ envi count t1 in
+    let (ty2, cnt2, cnstr2) = collect_ envi cnt1 t2 in
+    let newType = TyVar(cnt2) in
+      (newType,cnt2 + 1,List.concat [cnstr1;cnstr2;[(ty1,TyFn(ty2,newType))]])
 
-    | Cons(exp1, exp2) ->
-        let (typeT1, countT1, constrT1) = collect_constr environment exprCounter exp1 in
-            let (typeT2, countT2, constrT2) = collect_constr environment countT1 exp2 in
-                (typeT2, countT2, List.concat [constrT1; constrT2; [Type(TyList(typeT1)), typeT2]])
+  | Lam(var, exp) ->
+    let newType = TyVar(count) in
+    let newVar = (var, newType) in
+    let (ty,cnt,cnstr) = collect_(List.concat[envi;[newVar]]) (count + 1) exp in
+      (TyFn(newType, ty), cnt, cnstr)
 
-    | IsEmpty(exp) ->
-        let newType = NewType(exprCounter) in
-            let (typeT, countT, constrT) = collect_constr environment (exprCounter+1) exp in
-                (TyBool, countT, List.concat [constrT; [(Type(typeT), TyList(newType))]])
+  | Let(var, exp1, exp2) ->
+    let newType = TyVar(count) in
+    let newVar = (var, newType) in
+    let (ty1, cnt1, cnstr1) = collect_ envi (count + 1) exp1 in
+    let (ty2, cnt2, cnstr2) = collect_(List.concat[envi;[newVar]]) cnt1 exp2 in
+      (ty2, cnt2, List.concat [cnstr1;cnstr2;[(newType, ty1)]])
+
+  | Lrec(var1, var2, exp1, exp2) ->
+    let newType1 = TyVar(count) in
+    let f = (var1, newType1) in
+    let newType2 = TyVar(count + 1) in
+    let y = (var2, newType2) in
+    let (ty1,cnt1,cnstr1)=collect_(List.concat[envi;[y];[f]])(count + 2)exp1 in
+    let (ty2, cnt2, cnstr2) = collect_(List.concat [envi; [f]]) cnt1 exp2 in
+      (ty2, cnt2, List.concat [cnstr1;cnstr2;[(newType1, TyFn(newType2,ty1))]])
     
-    |Hd(exp) ->
-        let newType = NewType(exprCounter) in
-            let (typeT, countT, constrT) = collect_constr environment (exprCounter+1) exp in
-                (newType, countT, List.concat [constrT; [(Type(typeT), TyList(newType))]])
+  | Nil ->
+    let newType = TyVar(count) in
+      (TyList(newType), count + 1, [])
 
-    |Tl(exp) ->
-        let newType = NewType(exprCounter) in
-            let (typeT, countT, constrT) = collect_constr environment (exprCounter+1) exp in
-                (TyList(newType), countT, List.concat [constrT; [(Type(typeT), TyList(newType))]])
+  | Cons(exp1, exp2) ->
+    let (ty1, cnt1, cnstr1) = collect_ envi count exp1 in
+    let (ty2, cnt2, cnstr2) = collect_ envi cnt1 exp2 in
+      (ty2, cnt2, List.concat [cnstr1; cnstr2; [TyList(ty1), ty2]])
 
-    | Raise ->
-        let newType = NewType(exprCounter) in
-            (newType, exprCounter+1, [])
+  | IsEmpty(exp) ->
+    let newType = TyVar(count) in
+    let (ty, cnt, cnstr) = collect_ envi (count + 1) exp in
+      (TyBool, cnt, List.concat [cnstr; [(ty, TyList(newType))]])
     
-    |TryWith(exp1, exp2) ->
-        let (typeT1, countT1, constrT1) = collect_constr environment exprCounter exp1 in
-            let (typeT2, countT2, constrT2) = collect_constr environment countT1 exp2 in
-                (typeT2, countT2, List.concat [constrT1; constrT2; [(Type(typeT1), typeT2)]])
+  | Hd(exp) ->
+    let newType = TyVar(count) in
+    let (ty, cnt, cnstr) = collect_ envi (count + 1) exp in
+      (newType, cnt, List.concat [cnstr; [(ty, TyList(newType))]])
+
+  | Tl(exp) ->
+    let newType = TyVar(count) in
+    let (ty, cnt, cnstr) = collect_ envi (count + 1) exp in
+      (TyList(newType), cnt, List.concat [cnstr; [(ty, TyList(newType))]])
+
+  | Raise ->
+    let newType = TyVar(count) in
+      (newType, count + 1, [])
+    
+  | Try(exp1, exp2) ->
+    let (ty1, cnt1, cnstr1) = collect_ envi count exp1 in
+    let (ty2, cnt2, cnstr2) = collect_ envi cnt1 exp2 in
+      (ty2, cnt2, List.concat [cnstr1; cnstr2; [(ty1, ty2)]])
 
 ;;
 
-let collect (expre:expr) = collect_constr [] 0 expre
+let collect (expre:expr) = collect_ [] 0 expre
+
 ;;
 
-(************************************************************** AUX ******************************************************************)
+(************************************************************** AUX **********)
 
 let rec tipoToString (tp:tipo) : string =
   match tp with
-  | TyBool -> "bool"
-  | TyInt  -> "int"
-  | TyList a -> (tipoToString a) ^ " list"
-  | TyFn(tp1,tp2) -> "(" ^ (tipoToString tp1) ^ " -> " ^ (tipoToString tp2) ^ ")"
-  | TyPair(tp1, tp2) -> "(" ^ (tipoToString tp1) ^ ", " ^ (tipoToString tp2) ^ ")"
-  | NewType(n) -> "X_" ^ string_of_int n
+  | TyBool ->
+    "bool"
+  | TyInt  ->
+    "int"
+  | TyList a ->
+    (tipoToString a) ^ " list"
+  | TyFn(tp1,tp2) ->
+    "(" ^ (tipoToString tp1) ^ " -> " ^ (tipoToString tp2) ^ ")"
+  | TyPair(tp1, tp2) ->
+    "(" ^ (tipoToString tp1) ^ ", " ^ (tipoToString tp2) ^ ")"
+  | TyVar(n) ->
+    "X_" ^ string_of_int n
+
 ;;
 
 
-let rec printConstraints (constr:env) =
-    match constr with
-    | [] ->
-        print_endline (" ======== ")
-    | hd::tl -> ( match hd with
-        | (Type(tp1), tp2) -> 
-            print_endline ("type " ^ tipoToString tp1 ^ " = type " ^ tipoToString tp2)
-        | (String(str), typ) ->
-            print_endline ("new var ~" ^ str ^ "~ type = " ^ tipoToString typ);
-    );
+let rec printConstraints (constr:constrs) =
+  match constr with
+  | [] ->
+    print_endline (" ======== ")
+  | (tp1, tp2)::tl ->
+    print_endline ("type " ^ tipoToString tp1 ^ " = type " ^ tipoToString tp2);
     printConstraints tl;
 ;;
 
-(************************************************************** UNIFY ****************************************************************)
+(************************************************************** UNIFY ********)
 
 exception Unresolvable
 
@@ -203,15 +155,14 @@ let substitutionInType (xId: int) (newT: tipo) (t: tipo) : tipo =
     | TyPair(tyS1, tyS2) -> TyPair(subs tyS1, subs tyS2)
     | TyInt -> TyInt
     | TyBool -> TyBool
-    | NewType(n) -> if n=xId then newT else NewType(n)
+    | TyVar(n) -> if n=xId then newT else TyVar(n)
   in subs t
 
 ;;
 
-let rec substitutionInTyEquation (xId: int) (newT: tipo) (constr: env) : env = match constr with
-    | (Type(t), tp)::tl -> List.concat [[(Type(substitutionInType xId newT t), substitutionInType xId newT tp)]; substitutionInTyEquation xId newT tl]
-    | (tp1, tp2)::tl -> List.concat [[(tp1, substitutionInType xId newT tp2)]; substitutionInTyEquation xId newT tl]
-    | [] -> []
+let rec subsInEquation (xId: int) (newT: tipo) (constr: constrs) : constrs =
+  List.map (fun (tyS1,tyS2) ->
+    (substitutionInType xId newT tyS1, substitutionInType xId newT tyS2))constr
 
 ;;
 
@@ -222,116 +173,76 @@ let occurCheck (xId: int) (t: tipo) =
     | TyPair(tyT1,tyT2) -> occur tyT1; occur tyT2
     | TyInt -> ()
     | TyBool -> ()
-    | NewType(n) ->
-        if n=xId then (print_endline ((tipoToString (NewType(n))) ^ " OCCURS ON " ^ (tipoToString t) ^ " AND SETS EQ TO UNRESOLVABLE "); raise Unresolvable;)
-        else ();
+    | TyVar(n) ->
+      if n=xId
+        then (
+          print_endline ("X_" ^ string_of_int n ^ " OCCURS ON " ^ (tipoToString t));
+          raise Unresolvable;
+        )
+      else ();
   in occur t
 
 ;;
 
-let rec unify_rec (subs: env) (constr: env) =
-match constr with
-    | [] -> subs
-    | (Type(TyInt), TyInt)::tl -> unify_rec subs tl                                                                         (* 1 *)
-    | (Type(TyBool), TyBool)::tl -> unify_rec subs tl                                                                       (* 2 *)
-    | (Type(TyList(t1)), TyList(t2))::tl -> unify_rec subs (List.concat [tl; [(Type(t1), t2)]])                             (* 3 *)
-    | (Type(TyFn(t1, t2)), TyFn(t3, t4))::tl -> unify_rec subs (List.concat [tl; [(Type(t1), t3)]; [(Type(t2), t4)]])       (* 4 *)
-    | (Type(TyPair(t1, t2)), TyPair(t3, t4))::tl -> unify_rec subs (List.concat [tl; [(Type(t1), t3)]; [(Type(t2), t4)]])   (* 5 *)                                     
-    | (Type(NewType(n)), t)::tl ->
-        if t=NewType(n) then unify_rec subs tl
-        else(occurCheck n t; unify_rec (List.concat [subs; [(Type(NewType(n)), t)]]) (substitutionInTyEquation n t constr))
-    | (Type(t), NewType(n))::tl ->                                                                                          (* 8 *)
-        occurCheck n t;
-        unify_rec (List.concat [subs; [(Type(NewType(n)), t)]]) (substitutionInTyEquation n t constr)
-    | (_, _)::tl -> 
-        print_endline ("*****************\nUNRESOLVABLE!!\n*****************");
-        raise Unresolvable                                                                                                  (* 9 *)
+let rec unify_rec (subs: constrs) (constr: constrs) =
+  match constr with
+  | [] -> subs
+  (* 1 *)
+  | (TyInt, TyInt)::tl ->
+    unify_rec subs tl
+  (* 2 *)
+  | (TyBool, TyBool)::tl ->
+    unify_rec subs tl
+  (* 3 *)
+  | (TyList(t1), TyList(t2))::tl ->
+    unify_rec subs (List.concat [tl; [(t1, t2)]])
+  (* 4 *)
+  | (TyFn(t1, t2), TyFn(t3, t4))::tl ->
+    unify_rec subs (List.concat [tl; [(t1, t3)]; [(t2, t4)]])
+  (* 5 *)
+  | (TyPair(t1, t2), TyPair(t3, t4))::tl ->
+    unify_rec subs (List.concat [tl; [(t1, t3)]; [(t2, t4)]])
+  | (TyVar(n), t)::tl ->
+    (* 6 *)
+    if t=TyVar(n) then unify_rec subs tl
+    (* 7 *)
+    else (
+      occurCheck n t;
+      unify_rec (List.concat [subs;[(TyVar(n),t)]]) (subsInEquation n t constr)
+      )
+  (* 8 *)
+  | (t, TyVar(n))::tl ->
+    occurCheck n t;
+    unify_rec (List.concat [subs; [(TyVar(n), t)]]) (subsInEquation n t constr)
+  | (_, _)::tl -> raise Unresolvable                                                                                                  
 
 ;;
 
-let unify (constr: env) = unify_rec [] constr
+let unify (constr: constrs) = unify_rec [] constr
 
-(************************************************************** APPLY ****************************************************************)
+(************************************************************** APPLY ********)
 
-let rec applySubs (subs: env) (t: tipo) = 
-    match t with 
-    | TyList(tyT1) -> TyList(applySubs subs tyT1)
-    | TyFn(tyT1,tyT2) -> TyFn(applySubs subs tyT1, applySubs subs tyT2)
-    | TyPair(tyT1,tyT2) -> TyPair(applySubs subs tyT1, applySubs subs tyT2)
-    | TyInt -> TyInt
-    | TyBool -> TyBool
-    | NewType(n) -> (try applySubs subs (snd (List.find (fun (Type(NewType(x)), _) -> x == n) subs))
-                     with Not_found -> NewType(n))
+let rec applySubs (subs: constrs) (t: tipo) =
+  match t with 
+  | TyList(tyT1) -> TyList(applySubs subs tyT1)
+  | TyFn(tyT1,tyT2) -> TyFn(applySubs subs tyT1, applySubs subs tyT2)
+  | TyPair(tyT1,tyT2) -> TyPair(applySubs subs tyT1, applySubs subs tyT2)
+  | TyInt -> TyInt
+  | TyBool -> TyBool
+  | TyVar(n) -> (
+    try applySubs subs (snd (List.find (fun (t, _) ->
+      match t with
+        | TyVar(x) -> x == n 
+        | _ -> false
+      ) subs)
+    )
+    with Not_found -> TyVar(n)
+  )
 
-(************************************************************ TYPEINFER **************************************************************)
+(************************************************************ TYPEINFER ******)
 
-let typeInfer (exp: expr) : tipo = 
+let typeInfer (exp: expr) : tipo =
     let (finalTp, _, constr) = collect exp in
-        let mapSub = unify constr in
-            applySubs mapSub finalTp
-
-(************************************************************** TESTS ****************************************************************)
-
-let rec run_constraintTests (exps: expr list) = match exps with
-    | [] ->
-        print_endline ("=====END OF TESTS=====");
-    | hd::tl ->
-        let (finalTp, _, constr) = collect hd in
-            print_endline ("expression type = " ^ tipoToString finalTp);
-            printConstraints constr;
-            run_constraintTests tl;
+    let mapSub = unify constr in
+      applySubs mapSub finalTp
 ;;
-
-let rec run_typeInferTests (exps: expr list) = match exps with
-    | [] ->
-        print_endline ("=====END OF TESTS=====");
-    | hd::tl ->
-        (try
-            print_endline (tipoToString (typeInfer hd));
-            print_endline ("===============");
-        with
-        | UndeclaredVar -> ()
-        | Unresolvable -> ()
-        );
-        run_typeInferTests tl
-;;
-
-let () = 
-
-    (* NORMAL *)
-    let t1 = Num(1) in                                                                                              (* int *)
-    let t2 = Bool(true) in                                                                                          (* bool *)
-    let t3 = Binop(Sum, Num(1), Num(2)) in                                                                          (* int *)
-    let t4 = Pair(Num(1), Bool(false)) in                                                                           (* int X bool *)
-    let t5 = If(Bool(true), Binop(Sum, Num(6), Num(7)), Binop(Mult, Num(7), Num(8))) in                             (* int *)
-    let t6 = App(Fn(String("var"), (Binop(Div, Num(1), Binop(Sum, Num(2), Num(1))))), Num(6)) in                    (* int *)
-    let t7 = Let(String("myVar"), Num(5), Binop(Sum, Var("myVar"), Num(5))) in                                      (* int *)
-    let t8 = Lrec(String("fat"), String("x"),               
-                If(Binop(Eq, Var("x"), Num(0)),             
-                Num(1),             
-                Binop(Mult, Var("x"), App(Var("fat"), Binop(Diff, Var("x"), Num(1))))),             
-                App(Var("fat"), Num(5))) in                                                                         (* int *)
-    let t9 = IsEmpty(Nil) in                                                                                        (* bool *)
-    let t10 = Cons(Num(5), (Cons (Num(5), Nil))) in                                                                 (* int list *)
-    let t11 = Hd(Cons(Bool(true), (Cons(Bool(false), Nil)))) in                                                     (* bool *)
-    let t12 = TryWith(Bool(true), Binop(Eq,Num(5),Num(10))) in                                                      (* bool *)
-
-    (* WITH UNDEFINED TYPE *)               
-    let t13 = Fn(String("var"), (Binop(Div, Num(9), Binop(Sum, Num(2), Num(1))))) in                                (* X -> int *)
-    let t14 = Nil in                                                                                                (* X list *)
-    (* UNRESOLVABLE *)              
-    let t15 = Unop(Not, Binop(Sum, Num(1), Num(6))) in                                                              (* UNRESOLVABLE *)
-    let t16 = Tl(Cons(Num(5), (Cons(Bool(true), Nil)))) in                                                          (* UNRESOLVABLE *)
-    let t17 = Let(String("myVar"), Num(5), Let(String("myVar"), Bool(true), Binop(Sum, Var("myVar"), Num(5)))) in   (* UNRESOLVABLE *)
-
-    let tests = [t1;t2;t3;t4;t5;t6;t7;t8;t9;t10;t11;t12;t13;t14;t15;t16;t17] in
-
-(*TYPE INFER TESTS *)
-    run_typeInferTests tests
-
-(* COLLECT TESTS *)
-(* 
-    try
-        run_constraintTests tests
-    with
-        UndeclaredVar -> (); *)
