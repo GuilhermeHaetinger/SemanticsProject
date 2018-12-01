@@ -241,7 +241,7 @@ let () =
   let t11 = Hd(Cons(Bcte(true), (Cons(Bcte(false), Nil)))) in
   (* bool *)
   let t12 = Try(Bcte(true), Binop(Eq,Ncte(5),Ncte(10))) in
-  
+
   (* WITH UNDEFINED TYPE *)
   
   (* X -> int *)
@@ -261,7 +261,32 @@ let () =
 	Binop(Add, Var("myVar"), Ncte(5))
   )) in
 
-  let tests = [t1;t2;t3;t4;t5;t6;t7;t8;t9;t10;t11;t12;t13;t14;t15;t16;t17] in
+	(**************************************************** COMPLEX TESTS *)
+
+	(* SUM LIST ELEMENTS *)
+  let t18 = Lrec("sum", "x",
+    If(IsEmpty(Var("x")), Ncte(0), Binop(Add, Hd(Var("x")), App(Var("sum"), Tl(Var("x"))))),
+		App(Var("sum"), Cons(Ncte(1), Cons(Ncte(2), Cons(Ncte(3), Nil))))
+  ) in
+  
+	(* COUNT LIST ELEMENTS *)
+  let t19 = Lrec("count", "x",
+    If(IsEmpty(Var("x")), Ncte(0), Binop(Add, Ncte(1), App(Var("count"), Tl(Var("x"))))),
+		App(Var("count"), Cons(Ncte(1), Cons(Ncte(2), Cons(Ncte(3), Nil))))
+  ) in
+
+	(* REVERSE LIST *)
+  let t20 = Lrec("func", "newList,oldList",
+    If(IsEmpty(Var("newList,oldList")), Var("newList,oldList"), App(Var("func"),
+		  Cons(Cons(Hd(Hd(Tl(Var("newList,oldList")))), Hd(Var("newList,oldList"))),
+			     Cons(Tl(Hd(Tl(Var("newList,oldList")))), Nil)))
+		),
+	  Let("reverse", Lam("x",
+			Hd(App(Var("func"), Cons(Nil, Cons(Var("x"), Nil))))
+		), App(Var("reverse"), Cons(Ncte(1), Cons(Ncte(2), Cons(Ncte(3), Nil)))))
+	) in
+
+  let tests = [t1;t2;t3;t4;t5;t6;t7;t8;t9;t10;t11;t12;t13;t14;t15;t16;t17;t18;t19;t20] in
 
 (*TYPE INFER TESTS *)
   run_typeInferTests tests
